@@ -917,7 +917,7 @@
         }
         
         function handleStart(pos) {
-            if (distance(pos, homeA) <= 10) {
+            if (distance(pos, homeA) <= 20) {
                 isDragging = true;
                 dragTarget = homeA;
                 homeA.isDragging = true;
@@ -925,7 +925,7 @@
                 return;
             }
             
-            if (distance(pos, homeB) <= 10) {
+            if (distance(pos, homeB) <= 20) {
                 isDragging = true;
                 dragTarget = homeB;
                 homeB.isDragging = true;
