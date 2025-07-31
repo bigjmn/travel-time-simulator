@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dual Home Equidistant Travel Time Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+        
+        .map-container {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 0;
+        }
+        
+        .controls-container {
+            width: 300px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+            min-width: 280px;
+        }
+        
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                flex-direction: column;
+                gap: 15px;
+                padding: 0;
+            }
+            
+            .map-container {
+                padding: 15px;
+                order: 1;
+            }
+            
+            .controls-container {
+                width: 100%;
+                min-width: auto;
+                padding: 15px;
+                order: 2;
+            }
+            
+            .control-group {
+                margin-bottom: 15px;
+            }
+            
+            .control-group h3 {
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+            
+            .control-group label {
+                font-size: 13px;
+                margin: 3px 0;
+            }
+            
+            .info-panel {
+                display: none;
+            }
+            
+            button {
+                padding: 10px 12px;
+                font-size: 13px;
+                margin: 3px 0;
+                touch-action: manipulation;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            .map-container, .controls-container {
+                padding: 10px;
+                border-radius: 5px;
+            }
+            
+            .control-group h3 {
+                font-size: 14px;
+            }
+            
+            .control-group label {
+                font-size: 12px;
+            }
+            
+            button {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+        }
+        
+        #mapCanvas {
+            border: 2px solid #333;
+            border-radius: 50%;
+            cursor: default;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        @media (max-width: 768px) {
+            #mapCanvas {
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .control-group label {
+            display: block;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .control-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+        
+        .heat-map-legend {
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to right, #0064ff, #00ffff, #00ff00, #ffff00, #ff0000);
+            border: 1px solid #333;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .stats {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .train-stop {
+            fill: #ff6b35;
+            stroke: #333;
+            stroke-width: 2;
+            cursor: move;
+        }
+        
+        .train-stop:hover {
+            fill: #ff8c42;
+        }
+        
+        .home-point {
+            stroke: #333;
+            stroke-width: 3;
+            cursor: move;
+        }
+        
+        .home-point:hover {
+            opacity: 0.8;
+        }
+        
+        .home-a {
+            fill: #4CAF50;
+        }
+        
+        .home-b {
+            fill: #2196F3;
+        }
+        
+        .train-line {
+            stroke: #ff6b35;
+            stroke-width: 3;
+            fill: none;
+        }
+        
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        
+        button:hover {
+            background: #1976D2;
+        }
+        
+        .info-panel {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .info-panel h4 {
+            margin: 0 0 10px 0;
+            color: #1976D2;
+        }
+        
+        .threshold-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .threshold-control input[type="range"] {
+            flex: 1;
+        }
+        
+        .threshold-control span {
+            min-width: 40px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="map-container">
+            <h1>Dual Home Equidistant Travel Time Visualizer</h1>
+            <canvas id="mapCanvas" width="600" height="600"></canvas>
+        </div>
+        
+        <div class="controls-container">
+            <div class="control-group">
+                <h3>Settings</h3>
+                <label>
+                    Walk Speed: <input type="number" id="walkSpeed" value="1" min="0.1" max="10" step="0.1">
+                </label>
+                <label>
+                    Train Speed: <input type="number" id="trainSpeed" value="5" min="0.1" max="20" step="0.1">
+                </label>
+                <label>
+                    <input type="checkbox" id="showContours" checked> Show Contour Lines
+                </label>
+                <label>
+                    <input type="checkbox" id="fixedRange"> Fixed Heat Map Range (0-300)
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <h3>Equidistant Threshold</h3>
+                <div class="threshold-control">
+                    <span>0</span>
+                    <input type="range" id="thresholdSlider" min="0" max="50" value="10" step="1">
+                    <span id="thresholdValue">10</span>
+                </div>
+                <label style="font-size: 11px; color: #666;">
+                    Points are considered equidistant if the travel time difference between homes is ≤ this threshold
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <h3>Heat Map Legend</h3>
+                <div class="heat-map-legend"></div>
+                <div class="legend-labels">
+                    <span id="minTime">0</span>
+                    <span>Travel Time</span>
+                    <span id="maxTime">100</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Train Lines</h3>
+                <label>
+                    Current Line: <select id="lineSelector">
+                        <option value="0">Line 1 (Orange)</option>
+                    </select>
+                </label>
+                <button onclick="addTrainLine()">Add New Line</button>
+                <button onclick="removeCurrentLine()">Remove Current Line</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Actions</h3>
+                <button onclick="addTrainStop()">Add Stop to Current Line</button>
+                <button onclick="removeLastStop()">Remove Last Stop</button>
+                <button onclick="randomizeStops()">Randomize Current Line</button>
+                <button onclick="resetToDefault()">Reset All</button>
+            </div>
+            
+            <div class="control-group stats">
+                <h3>Statistics</h3>
+                <div>Train Stops: <span id="stopCount">0</span></div>
+                <div>Equidistant Points: <span id="equidistantCount">0</span></div>
+                <div>Min Travel Time: <span id="statMinTime">0</span></div>
+                <div>Max Travel Time: <span id="statMaxTime">0</span></div>
+                <div>Avg Travel Time: <span id="statAvgTime">0</span></div>
+            </div>
+            
+            <div class="info-panel">
+                <h4>Instructions</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+                    <li>Drag the <span style="color: #4CAF50;">green Home A</span> and <span style="color: #2196F3;">blue Home B</span> points</li>
+                    <li>Drag colored train stops to modify routes</li>
+                    <li>Only points that are approximately equidistant (within threshold) from both homes are shown</li>
+                    <li>Colors show the actual travel time from the closer home</li>
+                    <li>Blue = fast, Red = slow travel times</li>
+                    <li>Adjust the threshold to see more or fewer equidistant points</li>
+                    <li>Contour lines show equal travel times (isochrones)</li>
+                    <li>The visualization reveals the "neutral zone" between the two homes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants and global variables
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const mapRadius = 280;
+        
+        let walkSpeed = 1;
+        let trainSpeed = 5;
+        const heatResolution = 150;
+        let showContours = true;
+        const contourInterval = 10;
+        let fixedRange = false;
+        let equidistantThreshold = 10; // Time difference threshold for equidistant points
+        
+        // Two home points
+        let homeA = { x: centerX - 120, y: centerY, isDragging: false };
+        let homeB = { x: centerX + 120, y: centerY, isDragging: false };
+        
+        let trainLines = [
+            [
+                { x: centerX - 150, y: centerY - 50, isDragging: false, lineId: 0 },
+                { x: centerX, y: centerY - 80, isDragging: false, lineId: 0 },
+                { x: centerX + 150, y: centerY - 50, isDragging: false, lineId: 0 }
+            ]
+        ];
+        let currentLineId = 0;
+        
+        let isDragging = false;
+        let dragTarget = null;
+        let heatMapData = [];
+        let equidistantPoints = [];
+        
+        // Train line colors
+        const lineColors = [
+            '#ff6b35', '#2196F3', '#4CAF50', '#9C27B0', 
+            '#FF9800', '#607D8B', '#E91E63', '#795548'
+        ];
+        
+        // Helper functions
+        function getAllStops() {
+            let allStops = [];
+            for (let line of trainLines) {
+                allStops = allStops.concat(line);
+            }
+            return allStops;
+        }
+        
+        function getAllStopsArray() {
+            return getAllStops().map(stop => ({ x: stop.x, y: stop.y }));
+        }
+        
+        function getLineColor(lineId) {
+            return lineColors[lineId % lineColors.length];
+        }
+        
+        // Travel time calculation functions (same as original)
+        function distance(p1, p2) {
+            return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+        }
+        
+        function walkTime(p1, p2) {
+            return distance(p1, p2) / walkSpeed;
+        }
+        
+        function trainTime(p1, p2) {
+            return distance(p1, p2) / trainSpeed;
+        }
+        
+        function computeStopToStopTimes(stops, sequentialOnly = false) {
+            const times = {};
+            
+            if (sequentialOnly) {
+                const cumulative = [0];
+                for (let i = 1; i < stops.length; i++) {
+                    cumulative[i] = cumulative[i-1] + trainTime(stops[i-1], stops[i]);
+                }
+                for (let i = 0; i < stops.length; i++) {
+                    for (let j = 0; j < stops.length; j++) {
+                        times[`${i}-${j}`] = Math.abs(cumulative[j] - cumulative[i]);
+                    }
+                }
+            } else {
+                for (let i = 0; i < stops.length; i++) {
+                    for (let j = 0; j < stops.length; j++) {
+                        if (i === j) {
+                            times[`${i}-${j}`] = 0;
+                        } else {
+                            times[`${i}-${j}`] = trainTime(stops[i], stops[j]);
+                        }
+                    }
+                }
+            }
+            return times;
+        }
+        
+        function minTime(pointA, pointB, stops) {
+            if (stops.length === 0) {
+                return walkTime(pointA, pointB);
+            }
+            
+            const nodes = ['start', 'end', ...Array.from({length: stops.length}, (_, i) => `stop_${i}`)];
+            const graph = {};
+            nodes.forEach(node => graph[node] = []);
+            
+            const stopTimes = computeStopToStopTimes(stops, false);
+            
+            for (let i = 0; i < stops.length; i++) {
+                const walkTimeToStop = walkTime(pointA, stops[i]);
+                graph['start'].push([`stop_${i}`, walkTimeToStop]);
+            }
+            
+            for (let i = 0; i < stops.length; i++) {
+                const walkTimeFromStop = walkTime(stops[i], pointB);
+                graph[`stop_${i}`].push(['end', walkTimeFromStop]);
+            }
+            
+            const directWalkTime = walkTime(pointA, pointB);
+            graph['start'].push(['end', directWalkTime]);
+            
+            for (let i = 0; i < stops.length; i++) {
+                for (let j = 0; j < stops.length; j++) {
+                    if (i !== j) {
+                        const trainTimeIJ = stopTimes[`${i}-${j}`];
+                        graph[`stop_${i}`].push([`stop_${j}`, trainTimeIJ]);
+                        
+                        const walkTimeIJ = walkTime(stops[i], stops[j]);
+                        graph[`stop_${i}`].push([`stop_${j}`, walkTimeIJ]);
+                    }
+                }
+            }
+            
+            return dijkstra(graph, 'start', 'end');
+        }
+        
+        function dijkstra(graph, start, end) {
+            const distances = {};
+            const nodes = Object.keys(graph);
+            nodes.forEach(node => distances[node] = Infinity);
+            distances[start] = 0;
+            
+            const pq = [[0, start]];
+            const visited = new Set();
+            
+            while (pq.length > 0) {
+                pq.sort((a, b) => a[0] - b[0]);
+                const [currentDist, currentNode] = pq.shift();
+                
+                if (visited.has(currentNode)) {
+                    continue;
+                }
+                
+                visited.add(currentNode);
+                
+                if (currentNode === end) {
+                    return currentDist;
+                }
+                
+                if (graph[currentNode]) {
+                    for (let [neighbor, weight] of graph[currentNode]) {
+                        if (!visited.has(neighbor)) {
+                            const newDist = currentDist + weight;
+                            if (newDist < distances[neighbor]) {
+                                distances[neighbor] = newDist;
+                                pq.push([newDist, neighbor]);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return Infinity;
+        }
+        
+        // Generate equidistant heat map data
+        function generateEquidistantHeatMap() {
+            heatMapData = [];
+            equidistantPoints = [];
+            const step = (mapRadius * 2) / heatResolution;
+            const gridData = [];
+            
+            for (let i = 0; i <= heatResolution; i++) {
+                gridData[i] = [];
+                for (let j = 0; j <= heatResolution; j++) {
+                    const x = centerX - mapRadius + i * step;
+                    const y = centerY - mapRadius + j * step;
+                    
+                    const distFromCenter = distance({ x, y }, { x: centerX, y: centerY });
+                    if (distFromCenter <= mapRadius) {
+                        const timeToA = minTime(homeA, { x, y }, getAllStopsArray());
+                        const timeToB = minTime(homeB, { x, y }, getAllStopsArray());
+                        
+                        // Check if point is approximately equidistant
+                        const timeDifference = Math.abs(timeToA - timeToB);
+                        if (timeDifference <= equidistantThreshold) {
+                            // Use the minimum travel time for coloring
+                            const minTravelTime = Math.min(timeToA, timeToB);
+                            const point = { x, y, time: minTravelTime, timeToA, timeToB, timeDifference, valid: true };
+                            
+                            gridData[i][j] = point;
+                            heatMapData.push(point);
+                            equidistantPoints.push(point);
+                        } else {
+                            gridData[i][j] = { x, y, time: Infinity, valid: false };
+                        }
+                    } else {
+                        gridData[i][j] = { x, y, time: Infinity, valid: false };
+                    }
+                }
+            }
+            
+            window.gridData = gridData;
+            window.gridStep = step;
+            updateStatistics();
+        }
+        
+        // Generate contour lines for equidistant areas
+        function generateContours() {
+            if (!window.gridData || heatMapData.length === 0) return [];
+            
+            let minTime, maxTime;
+            
+            if (fixedRange) {
+                minTime = 0;
+                maxTime = 300;
+            } else {
+                const times = heatMapData.map(d => d.time);
+                minTime = Math.min(...times);
+                maxTime = Math.max(...times);
+            }
+            
+            const contours = [];
+            const gridSize = heatResolution + 1;
+            
+            const levels = [];
+            for (let level = Math.ceil(minTime / contourInterval) * contourInterval; level < maxTime; level += contourInterval) {
+                levels.push(level);
+            }
+            
+            for (let level of levels) {
+                const contourPaths = [];
+                
+                for (let i = 0; i < gridSize - 1; i++) {
+                    for (let j = 0; j < gridSize - 1; j++) {
+                        const cell = [
+                            window.gridData[i][j],
+                            window.gridData[i + 1][j],
+                            window.gridData[i + 1][j + 1],
+                            window.gridData[i][j + 1]
+                        ];
+                        
+                        if (cell.every(c => c.valid)) {
+                            const segments = getContourSegments(cell, level);
+                            contourPaths.push(...segments);
+                        }
+                    }
+                }
+                
+                if (contourPaths.length > 0) {
+                    contours.push({
+                        level: level,
+                        paths: contourPaths
+                    });
+                }
+            }
+            
+            return contours;
+        }
+        
+        function getContourSegments(cell, level) {
+            const segments = [];
+            const config = cell.map(c => c.time >= level ? 1 : 0);
+            const configIndex = config[0] + config[1] * 2 + config[2] * 4 + config[3] * 8;
+            
+            const segmentTable = {
+                0: [], 1: [[[0, 3], [0, 1]]], 2: [[[0, 1], [1, 2]]], 3: [[[0, 3], [1, 2]]],
+                4: [[[1, 2], [2, 3]]], 5: [[[0, 1], [1, 2]], [[2, 3], [0, 3]]], 6: [[[0, 1], [2, 3]]],
+                7: [[[0, 3], [2, 3]]], 8: [[[2, 3], [0, 3]]], 9: [[[0, 1], [2, 3]]],
+                10: [[[0, 1], [0, 3]], [[1, 2], [2, 3]]], 11: [[[1, 2], [2, 3]]], 12: [[[0, 3], [1, 2]]],
+                13: [[[0, 1], [1, 2]]], 14: [[[0, 3], [0, 1]]], 15: []
+            };
+            
+            const cellSegments = segmentTable[configIndex] || [];
+            
+            for (let segmentDef of cellSegments) {
+                const segment = [];
+                
+                for (let edgeDef of segmentDef) {
+                    const [corner1, corner2] = edgeDef;
+                    const c1 = cell[corner1];
+                    const c2 = cell[corner2];
+                    
+                    let t = 0.5;
+                    if (Math.abs(c1.time - c2.time) > 0.001) {
+                        t = (level - c1.time) / (c2.time - c1.time);
+                        t = Math.max(0, Math.min(1, t));
+                    }
+                    
+                    const x = c1.x + t * (c2.x - c1.x);
+                    const y = c1.y + t * (c2.y - c1.y);
+                    
+                    segment.push({ x, y });
+                }
+                
+                if (segment.length === 2) {
+                    segments.push(segment);
+                }
+            }
+            
+            return segments;
+        }
+        
+        function drawContours() {
+            const contours = generateContours();
+            if (contours.length === 0) return;
+            
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.7;
+            
+            for (let contour of contours) {
+                for (let segment of contour.paths) {
+                    if (segment.length === 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(segment[0].x, segment[0].y);
+                        ctx.lineTo(segment[1].x, segment[1].y);
+                        ctx.stroke();
+                    }
+                }
+                
+                if (contour.paths.length > 0) {
+                    drawContourLabel(contour.level, contour.paths);
+                }
+            }
+            
+            ctx.globalAlpha = 1.0;
+        }
+        
+        function drawContourLabel(level, paths) {
+            if (paths.length === 0) return;
+            
+            let longestSegment = null;
+            let maxLength = 0;
+            
+            for (let segment of paths) {
+                if (segment.length === 2) {
+                    const length = distance(segment[0], segment[1]);
+                    if (length > maxLength) {
+                        maxLength = length;
+                        longestSegment = segment;
+                    }
+                }
+            }
+            
+            if (longestSegment && maxLength > 30) {
+                const midX = (longestSegment[0].x + longestSegment[1].x) / 2;
+                const midY = (longestSegment[0].y + longestSegment[1].y) / 2;
+                
+                const distFromCenter = distance({ x: midX, y: midY }, { x: centerX, y: centerY });
+                if (distFromCenter <= mapRadius - 20) {
+                    const text = level.toFixed(1);
+                    ctx.font = '10px Arial';
+                    const textWidth = ctx.measureText(text).width;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillRect(midX - textWidth/2 - 2, midY - 6, textWidth + 4, 12);
+                    
+                    ctx.fillStyle = '#000';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(text, midX, midY + 3);
+                }
+            }
+        }
+        
+        function getHeatColor(value, minVal, maxVal) {
+            if (maxVal === minVal) {
+                return 'rgba(0, 100, 255, 0.8)';
+            }
+            
+            const ratio = Math.max(0, Math.min(1, (value - minVal) / (maxVal - minVal)));
+            
+            let r, g, b;
+            
+            if (ratio <= 0.25) {
+                const t = ratio / 0.25;
+                r = 0;
+                g = Math.floor(100 + t * 155);
+                b = 255;
+            } else if (ratio <= 0.5) {
+                const t = (ratio - 0.25) / 0.25;
+                r = 0;
+                g = 255;
+                b = Math.floor(255 * (1 - t));
+            } else if (ratio <= 0.75) {
+                const t = (ratio - 0.5) / 0.25;
+                r = Math.floor(255 * t);
+                g = 255;
+                b = 0;
+            } else {
+                const t = (ratio - 0.75) / 0.25;
+                r = 255;
+                g = Math.floor(255 * (1 - t));
+                b = 0;
+            }
+            
+            return `rgba(${r}, ${g}, ${b}, 0.8)`;
+        }
+        
+        function drawMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw equidistant heat map
+            if (heatMapData.length > 0) {
+                let minTime, maxTime;
+                
+                if (fixedRange) {
+                    minTime = 0;
+                    maxTime = 300;
+                } else {
+                    const times = heatMapData.map(d => d.time);
+                    minTime = Math.min(...times);
+                    maxTime = Math.max(...times);
+                }
+                
+                document.getElementById('minTime').textContent = minTime.toFixed(1);
+                document.getElementById('maxTime').textContent = maxTime.toFixed(1);
+                
+                heatMapData.forEach(point => {
+                    const color = getHeatColor(point.time, minTime, maxTime);
+                    ctx.fillStyle = color;
+                    ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
+                });
+                
+                if (showContours) {
+                    drawContours();
+                }
+            }
+            
+            // Draw map boundary
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, mapRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Draw train route lines
+            trainLines.forEach((line, lineId) => {
+                if (line.length > 1) {
+                    const color = getLineColor(lineId);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = lineId === currentLineId ? 4 : 3;
+                    ctx.setLineDash([]);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(line[0].x, line[0].y);
+                    for (let i = 1; i < line.length; i++) {
+                        ctx.lineTo(line[i].x, line[i].y);
+                    }
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw train stops
+            trainLines.forEach((line, lineId) => {
+                const color = getLineColor(lineId);
+                line.forEach((stop, stopIndex) => {
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = '#333';
+                    
+                    const radius = (lineId === currentLineId) ? 9 : 8;
+                    ctx.lineWidth = (lineId === currentLineId) ? 3 : 2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(stop.x, stop.y, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${lineId + 1}.${stopIndex + 1}`, stop.x, stop.y - 18);
+                });
+            });
+            
+            // Draw home points
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            
+            // Home A (Green)
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(homeA.x, homeA.y, 10, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('HOME A', homeA.x, homeA.y - 18);
+            
+            // Home B (Blue)
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.arc(homeB.x, homeB.y, 10, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = '#333';
+            ctx.fillText('HOME B', homeB.x, homeB.y - 18);
+        }
+        
+        // Event handlers
+        function getMousePos(event) {
+            const rect = canvas.getBoundingClientRect();
+            
+            // Calculate the scaling factor between canvas internal size and displayed size
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            return {
+                x: (event.clientX - rect.left) * scaleX,
+                y: (event.clientY - rect.top) * scaleY
+            };
+        }
+        
+        function getTouchPos(event) {
+            const rect = canvas.getBoundingClientRect();
+            const touch = event.touches[0] || event.changedTouches[0];
+            
+            // Calculate the scaling factor between canvas internal size and displayed size
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            return {
+                x: (touch.clientX - rect.left) * scaleX,
+                y: (touch.clientY - rect.top) * scaleY
+            };
+        }
+        
+        function updateCursor(mousePos) {
+            let overMovableNode = false;
+            
+            if (distance(mousePos, homeA) <= 10 || distance(mousePos, homeB) <= 10) {
+                overMovableNode = true;
+            }
+            
+            if (!overMovableNode) {
+                for (let line of trainLines) {
+                    for (let stop of line) {
+                        const radius = (stop.lineId === currentLineId) ? 9 : 8;
+                        if (distance(mousePos, stop) <= radius) {
+                            overMovableNode = true;
+                            break;
+                        }
+                    }
+                    if (overMovableNode) break;
+                }
+            }
+            
+            canvas.style.cursor = overMovableNode ? 'grab' : 'default';
+        }
+        
+        function handleStart(pos) {
+            if (distance(pos, homeA) <= 10) {
+                isDragging = true;
+                dragTarget = homeA;
+                homeA.isDragging = true;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
+            if (distance(pos, homeB) <= 10) {
+                isDragging = true;
+                dragTarget = homeB;
+                homeB.isDragging = true;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
+            for (let line of trainLines) {
+                for (let stop of line) {
+                    const radius = (stop.lineId === currentLineId) ? 9 : 8;
+                    if (distance(pos, stop) <= radius) {
+                        isDragging = true;
+                        dragTarget = stop;
+                        stop.isDragging = true;
+                        canvas.style.cursor = 'grabbing';
+                        currentLineId = stop.lineId;
+                        updateLineSelector();
+                        return;
+                    }
+                }
+            }
+        }
+        
+        function handleMove(pos) {
+            if (isDragging && dragTarget) {
+                const distFromCenter = distance(pos, { x: centerX, y: centerY });
+                if (distFromCenter <= mapRadius) {
+                    dragTarget.x = pos.x;
+                    dragTarget.y = pos.y;
+                    drawMap();
+                }
+            } else {
+                updateCursor(pos);
+            }
+        }
+        
+        function handleEnd(pos) {
+            if (isDragging) {
+                isDragging = false;
+                if (dragTarget) {
+                    dragTarget.isDragging = false;
+                    dragTarget = null;
+                }
+                generateEquidistantHeatMap();
+                drawMap();
+                updateCursor(pos);
+            }
+        }
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => handleStart(getMousePos(e)));
+        canvas.addEventListener('mousemove', (e) => handleMove(getMousePos(e)));
+        canvas.addEventListener('mouseup', (e) => handleEnd(getMousePos(e)));
+        
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleStart(getTouchPos(e));
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            handleMove(getTouchPos(e));
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleEnd(getTouchPos(e));
+        });
+        
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Control functions
+        function addTrainLine() {
+            const newLineId = trainLines.length;
+            if (newLineId >= lineColors.length) {
+                alert('Maximum number of train lines reached!');
+                return;
+            }
+            
+            const newLine = [];
+            for (let i = 0; i < 2; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const radius = Math.random() * mapRadius * 0.6;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                newLine.push({ x, y, isDragging: false, lineId: newLineId });
+            }
+            
+            trainLines.push(newLine);
+            currentLineId = newLineId;
+            updateLineSelector();
+            generateEquidistantHeatMap();
+            drawMap();
+        }
+        
+        function removeCurrentLine() {
+            if (trainLines.length <= 1) {
+                alert('Cannot remove the last train line!');
+                return;
+            }
+            
+            trainLines.splice(currentLineId, 1);
+            
+            for (let i = 0; i < trainLines.length; i++) {
+                trainLines[i].forEach(stop => stop.lineId = i);
+            }
+            
+            if (currentLineId >= trainLines.length) {
+                currentLineId = trainLines.length - 1;
+            }
+            
+            updateLineSelector();
+            generateEquidistantHeatMap();
+            drawMap();
+        }
+        
+        function addTrainStop() {
+            if (trainLines[currentLineId]) {
+                const angle = Math.random() * 2 * Math.PI;
+                const radius = Math.random() * mapRadius * 0.8;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                
+                trainLines[currentLineId].push({ x, y, isDragging: false, lineId: currentLineId });
+                generateEquidistantHeatMap();
+                drawMap();
+            }
+        }
+        
+        function removeLastStop() {
+            if (trainLines[currentLineId] && trainLines[currentLineId].length > 0) {
+                trainLines[currentLineId].pop();
+                generateEquidistantHeatMap();
+                drawMap();
+            }
+        }
+        
+        function randomizeStops() {
+            if (trainLines[currentLineId]) {
+                trainLines[currentLineId].forEach(stop => {
+                    const angle = Math.random() * 2 * Math.PI;
+                    const radius = Math.random() * mapRadius * 0.8;
+                    stop.x = centerX + radius * Math.cos(angle);
+                    stop.y = centerY + radius * Math.sin(angle);
+                });
+                generateEquidistantHeatMap();
+                drawMap();
+            }
+        }
+        
+        function resetToDefault() {
+            trainLines = [
+                [
+                    { x: centerX - 150, y: centerY - 50, isDragging: false, lineId: 0 },
+                    { x: centerX, y: centerY - 80, isDragging: false, lineId: 0 },
+                    { x: centerX + 150, y: centerY - 50, isDragging: false, lineId: 0 }
+                ]
+            ];
+            currentLineId = 0;
+            homeA = { x: centerX - 120, y: centerY, isDragging: false };
+            homeB = { x: centerX + 120, y: centerY, isDragging: false };
+            updateLineSelector();
+            generateEquidistantHeatMap();
+            drawMap();
+        }
+        
+        function updateLineSelector() {
+            const selector = document.getElementById('lineSelector');
+            selector.innerHTML = '';
+            
+            trainLines.forEach((line, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Line ${index + 1} (${getColorName(index)})`;
+                if (index === currentLineId) {
+                    option.selected = true;
+                }
+                selector.appendChild(option);
+            });
+        }
+        
+        function getColorName(lineId) {
+            const colorNames = ['Orange', 'Blue', 'Green', 'Purple', 'Amber', 'Blue Grey', 'Pink', 'Brown'];
+            return colorNames[lineId % colorNames.length];
+        }
+        
+        function updateStatistics() {
+            if (heatMapData.length === 0) return;
+            
+            const times = heatMapData.map(d => d.time);
+            const actualMinTime = Math.min(...times);
+            const actualMaxTime = Math.max(...times);
+            const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+            
+            const totalStops = getAllStops().length;
+            document.getElementById('stopCount').textContent = `${totalStops} (${trainLines.length} lines)`;
+            document.getElementById('equidistantCount').textContent = equidistantPoints.length;
+            
+            if (fixedRange) {
+                document.getElementById('statMinTime').textContent = `${actualMinTime.toFixed(2)} (0-300 range)`;
+                document.getElementById('statMaxTime').textContent = `${actualMaxTime.toFixed(2)} (0-300 range)`;
+            } else {
+                document.getElementById('statMinTime').textContent = actualMinTime.toFixed(2);
+                document.getElementById('statMaxTime').textContent = actualMaxTime.toFixed(2);
+            }
+            
+            document.getElementById('statAvgTime').textContent = avgTime.toFixed(2);
+        }
+        
+        // Control event listeners
+        document.getElementById('walkSpeed').addEventListener('input', (e) => {
+            walkSpeed = parseFloat(e.target.value);
+            generateEquidistantHeatMap();
+            drawMap();
+        });
+        
+        document.getElementById('trainSpeed').addEventListener('input', (e) => {
+            trainSpeed = parseFloat(e.target.value);
+            generateEquidistantHeatMap();
+            drawMap();
+        });
+        
+        document.getElementById('showContours').addEventListener('change', (e) => {
+            showContours = e.target.checked;
+            drawMap();
+        });
+        
+        document.getElementById('fixedRange').addEventListener('change', (e) => {
+            fixedRange = e.target.checked;
+            drawMap();
+        });
+        
+        document.getElementById('lineSelector').addEventListener('change', (e) => {
+            currentLineId = parseInt(e.target.value);
+            drawMap();
+        });
+        
+        document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+            equidistantThreshold = parseFloat(e.target.value);
+            document.getElementById('thresholdValue').textContent = equidistantThreshold;
+            generateEquidistantHeatMap();
+            drawMap();
+        });
+        
+        // Initialize
+        updateLineSelector();
+        document.getElementById('thresholdValue').textContent = equidistantThreshold;
+        generateEquidistantHeatMap();
+        drawMap();
+        
+        window.addEventListener('resize', () => {
+            drawMap();
+        });
+    </script>
+</body>
+</html>
